@@ -50,6 +50,8 @@
 									<listOptionValue builtIn="false" value="../Libraries/CMSIS/Include"/>
 									<listOptionValue builtIn="false" value="../FreeRTOS_Source/include"/>
 									<listOptionValue builtIn="false" value="../FreeRTOS_Source/portable/GCC/ARM_CM3"/>
+									<listOptionValue builtIn="false" value="../user/inc"/>
+									<listOptionValue builtIn="false" value="../user/src"/>
 								</option>
 								<option id="com.atollic.truestudio.common_options.target.endianess.1412620958" name="Endianess" superClass="com.atollic.truestudio.common_options.target.endianess"/>
 								<option id="com.atollic.truestudio.common_options.target.mcpu.795408328" name="Microcontroller" superClass="com.atollic.truestudio.common_options.target.mcpu" value="STM32F103RB" valueType="enumerated"/>
