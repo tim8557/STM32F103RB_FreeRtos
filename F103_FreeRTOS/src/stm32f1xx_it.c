@@ -29,6 +29,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f1xx_it.h"
+#include "FreeRTOSConfig.h"
 
 /** @addtogroup IO_Toggle
   * @{
@@ -111,10 +112,11 @@ void UsageFault_Handler(void)
   * @param  None
   * @retval None
   */
+/*
 void SVC_Handler(void)
 {
 }
-
+*/
 /**
   * @brief  This function handles Debug Monitor exception.
   * @param  None
@@ -129,19 +131,21 @@ void DebugMon_Handler(void)
   * @param  None
   * @retval None
   */
+/*
 void PendSV_Handler(void)
 {
 }
-
+*/
 /**
   * @brief  This function handles SysTick Handler.
   * @param  None
   * @retval None
   */
+/*
 void SysTick_Handler(void)
 {
 }
-
+*/
 /******************************************************************************/
 /*                 STM32F1xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */

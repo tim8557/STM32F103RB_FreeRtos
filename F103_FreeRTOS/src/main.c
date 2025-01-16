@@ -37,6 +37,8 @@ SOFTWARE.
 #include "stm32f10x_rcc.h"
 #include "misc.h"
 #include "Mcal_Gpio.h"
+#include "stm32f10x_gpio.h"
+#include "stm32f10x.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -119,6 +121,7 @@ SOFTWARE.
 /* Private function prototypes */
 void vTask1(void *pvParameters);
 static void prvSetupHardware(void);
+static void SplashLED(void);
 
 /* Private functions */
 
@@ -135,22 +138,19 @@ int main(void)
 
   xTaskCreate(vTask1, "Task1", STACK_SIZE, NULL, 0, NULL);
 
+  vTaskStartScheduler();
+
   while(1);
+  return 0;
 }
 
 
 void vTask1(void *pvParameters)
 {
-  uint8_t cnt = 0;
-
-  if(cnt == 10)
-  {
-    cnt = 0;
-  }
-  else
-  {
-    cnt = cnt + 1;
-  }
+	while(1)
+	{	
+		SplashLED();
+	}
 }
 #ifdef  USE_FULL_ASSERT
 
@@ -206,7 +206,7 @@ uint32_t sEE_TIMEOUT_UserCallback(void)
 #endif /* USE_SEE */
 
 
-static void prvSetupHardware( void )
+static void prvSetupHardware(void)
 {
 	/* Start with the clocks in their expected state. */
 	RCC_DeInit();
@@ -272,4 +272,29 @@ static void prvSetupHardware( void )
 
 	McalPort_GpioConfig();
 }
+
+static void SplashLED(void)
+{
+	static uint32_t cnt = 0;
+	/* Splash LED */
+	if(cnt == 1000000)
+	{
+		cnt = 0;
+	}
+	else 
+	{
+		cnt++;
+	}
+
+	if(cnt == 500000)
+	{
+		McalPort_SplashLedHigh(GPIOB, GPIO_Pin_8);
+	}
+
+	if(cnt == 999999)
+	{
+		McalPort_SplashLedLow(GPIOB, GPIO_Pin_8);
+	}
+}
+
 
