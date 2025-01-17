@@ -27,10 +27,10 @@ void McalPort_GpioConfig(void)
 
 void McalPort_SplashLedHigh(GPIO_TypeDef* port, uint16_t pin)
 {
-   GPIO_WriteBit(port, pin, Bit_RESET);
+   GPIO_WriteBit(port, pin, Bit_SET);
 }
 
 void McalPort_SplashLedLow(GPIO_TypeDef* port, uint16_t pin)
 {
-    GPIO_WriteBit(port, pin, Bit_SET);
+    GPIO_WriteBit(port, pin, Bit_RESET);
 }

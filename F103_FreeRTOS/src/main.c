@@ -39,6 +39,7 @@ SOFTWARE.
 #include "Mcal_Gpio.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x.h"
+#include "Bsp_htu21d.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -113,15 +114,18 @@ SOFTWARE.
 
 
 /* Private macro */
-#define STACK_SIZE 1024
+#define STACK_SIZE 500
 
 /* Private variables */
  //USART_InitTypeDef USART_InitStructure;
 
 /* Private function prototypes */
-void vTask1(void *pvParameters);
+void vTaskTempSensor(void *pvParameters);
 static void prvSetupHardware(void);
 static void SplashLED(void);
+
+uint8_t TempResBuffer[BSP_HTU21D_TEMP_BUFFER_SIZE] = {0};
+
 
 /* Private functions */
 
@@ -134,9 +138,9 @@ static void SplashLED(void);
 */
 int main(void)
 {
-  prvSetupHardware();
+ prvSetupHardware();
 
-  xTaskCreate(vTask1, "Task1", STACK_SIZE, NULL, 0, NULL);
+  xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
 
   vTaskStartScheduler();
 
@@ -145,13 +149,24 @@ int main(void)
 }
 
 
-void vTask1(void *pvParameters)
+void vTaskTempSensor(void *pvParameters)
 {
+	xTimeOutType x_timeout; 
+	portTickType openTimeout;
+	
+	vTaskSetTimeOutState(&x_timeout);
+	openTimeout = 1000; /*ms*/
+ 
 	while(1)
-	{	
-		SplashLED();
+	{
+		if(xTaskCheckForTimeOut(&x_timeout, &openTimeout) == pdTRUE)
+		{
+			Htu21d_Gettemperature(I2C1, TempResBuffer);
+			openTimeout = 1000; /*reload the  1000 ms*/
+		}
 	}
 }
+
 #ifdef  USE_FULL_ASSERT
 
 /**
@@ -271,6 +286,8 @@ static void prvSetupHardware(void)
 	//SerialPortInit();
 
 	McalPort_GpioConfig();
+
+	Htu21d_Init();
 }
 
 static void SplashLED(void)
