@@ -11,9 +11,9 @@
 #define SSD1315_WRITE   0    //I2C write mode
 #define SSD1315_READ    1    //I2C read mode
 
-#define SSD1315_DEVICE_ADDRESS     0x1E
-#define SSD1315_DEVICE_CMD         (uint8_t)(SSD1315_DEVICE_ADDRESS << 2) | (SSD1315_CMD << 1)
-#define SSD1315_DEVICE_DATA        (uint8_t)(SSD1315_DEVICE_ADDRESS << 2) | (SSD1315_DATA << 1)
+#define SSD1315_DEVICE_ADDRESS     0x78
+#define SSD1315_DEVICE_CMD         (uint8_t)(SSD1315_CMD << 6) | (1 << 7)
+#define SSD1315_DEVICE_DATA        (uint8_t)(SSD1315_DATA << 6) | (1 << 7)
 
 
 
@@ -26,30 +26,61 @@ static uint16_t Ssd1315_StartCnt = 0;
 void Ssd1315_Init(void)
 {
     Ssd1315_PinInit();
+}
 
-    Ssd1315_WriteCmd(0xAE);
-    Ssd1315_WriteCmd(0xD5);
-    Ssd1315_WriteCmd(0x80);
-    Ssd1315_WriteCmd(0xA8);
-    Ssd1315_WriteCmd(0x3F);
-    Ssd1315_WriteCmd(0xD3);
-    Ssd1315_WriteCmd(0x00);
-    Ssd1315_WriteCmd(0x40);
-    Ssd1315_WriteCmd(0x8D);
-    Ssd1315_WriteCmd(0x14);
-    Ssd1315_WriteCmd(0x20);
-    Ssd1315_WriteCmd(0x00);
-    Ssd1315_WriteCmd(0xA1);
-    Ssd1315_WriteCmd(0xC8);
-    Ssd1315_WriteCmd(0xDA);
-    Ssd1315_WriteCmd(0x12);
-    Ssd1315_WriteCmd(0x81);
-    Ssd1315_WriteCmd(0xCF);
-    Ssd1315_WriteCmd(0xA4);
-    Ssd1315_WriteCmd(0xA6);
-    Ssd1315_WriteCmd(0xD5);
-    Ssd1315_WriteCmd(0x80);
-    Ssd1315_WriteCmd(0xAF);
+
+uint8_t Ssd1315_InitCmd(void)
+{
+    uint8_t init_result = 0;
+
+    if (Ssd1315_StartCnt == 400)
+    {
+        Ssd1315_WriteCmd(0xAE);
+        #if 0
+        Ssd1315_WriteCmd(0x20);
+        Ssd1315_WriteCmd(0x10);
+        Ssd1315_WriteCmd(0xB0);
+        Ssd1315_WriteCmd(0xC8);
+        Ssd1315_WriteCmd(0x00);
+        Ssd1315_WriteCmd(0x10);
+        Ssd1315_WriteCmd(0x40);
+        Ssd1315_WriteCmd(0x81);
+        Ssd1315_WriteCmd(0xFF);
+        Ssd1315_WriteCmd(0xA1);
+        Ssd1315_WriteCmd(0xA6);
+        Ssd1315_WriteCmd(0xA8);
+        Ssd1315_WriteCmd(0x3F);
+        Ssd1315_WriteCmd(0xA4);
+        Ssd1315_WriteCmd(0xD3);
+        Ssd1315_WriteCmd(0x00);
+        Ssd1315_WriteCmd(0xD5);
+        Ssd1315_WriteCmd(0xF0);
+        Ssd1315_WriteCmd(0xD9);
+        Ssd1315_WriteCmd(0x22);
+        Ssd1315_WriteCmd(0xDA);
+        Ssd1315_WriteCmd(0x12);
+        Ssd1315_WriteCmd(0xDB);
+        Ssd1315_WriteCmd(0x20);
+        Ssd1315_WriteCmd(0x8D);
+        Ssd1315_WriteCmd(0x14);
+        #endif
+        Ssd1315_WriteCmd(0x8D);
+        Ssd1315_WriteCmd(0xAF);
+        init_result = 1;
+        Ssd1315_StartCnt = 65535;
+    }
+    else
+    {
+        if (Ssd1315_StartCnt == 65535)
+        {
+            Ssd1315_StartCnt = 65535;
+        }
+        else
+        {
+            Ssd1315_StartCnt++;
+        }  
+    }
+    return init_result;
 }
 
 static void Ssd1315_PinInit(void)
@@ -88,11 +119,17 @@ void Ssd1315_WriteCmd(uint8_t cmd)
     while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
 
     //send the device address and check if the slave received the signal. 
-    I2C_Send7bitAddress(SSD1315_I2C_PORT, SSD1315_DEVICE_CMD, I2C_Direction_Transmitter);
+    I2C_Send7bitAddress(SSD1315_I2C_PORT, SSD1315_DEVICE_ADDRESS, I2C_Direction_Transmitter);
 
     //check if devic address is recived
     while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
     
+    //temperature read commend
+    I2C_SendData(SSD1315_I2C_PORT, SSD1315_DEVICE_CMD);
+
+    //check if data is transmitted
+    while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+
     //temperature read commend
     I2C_SendData(SSD1315_I2C_PORT, cmd);
 
@@ -115,11 +152,17 @@ void Ssd1315_WriteData(uint8_t data)
     while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_MODE_SELECT) == ERROR);
 
     //send the device address and check if the slave received the signal. 
-    I2C_Send7bitAddress(SSD1315_I2C_PORT, SSD1315_DEVICE_DATA, I2C_Direction_Transmitter);
+    I2C_Send7bitAddress(SSD1315_I2C_PORT, SSD1315_DEVICE_ADDRESS, I2C_Direction_Transmitter);
 
     //check if devic address is recived
     while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
     
+    //temperature read commend
+    I2C_SendData(SSD1315_DEVICE_CMD, SSD1315_DEVICE_DATA);
+    
+    //check if data is transmitted
+    while (I2C_CheckEvent(SSD1315_I2C_PORT, I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
+
     //temperature read commend
     I2C_SendData(SSD1315_I2C_PORT, data);
 

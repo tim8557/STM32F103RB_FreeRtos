@@ -142,8 +142,8 @@ Htu21d_Humidity_Type HumiResbuffer = {{0}};
 int main(void)
 {
   prvSetupHardware();
-  vTaskOledDisplay();
-  xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
+  xTaskCreate(vTaskOledDisplay, "vTaskOledDisplay", STACK_SIZE, NULL, 0, NULL);
+  //xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
   vTaskStartScheduler();
 
   while(1);
@@ -152,14 +152,31 @@ int main(void)
 
 void vTaskOledDisplay(void)
 {
-	#if 1
-	uint8_t i;
-	Ssd1315_OledSetPosition(0, 0);
-	for (i = 0; i < 64; i++)
+	xTimeOutType x_timeout; 
+	portTickType openTimeout;
+	uint8_t init_result;
+	
+	vTaskSetTimeOutState(&x_timeout);
+	openTimeout = 5; /*ms*/
+ 
+	while(1)
 	{
-		Ssd1315_WriteData(0xFF);
+		if(xTaskCheckForTimeOut(&x_timeout, &openTimeout) == pdTRUE)
+		{
+			init_result = Ssd1315_InitCmd();
+			openTimeout = 5; /*reload the  1000 ms*/
+		}
+
+		if (init_result == 1)
+		{
+			uint8_t i;
+			Ssd1315_OledSetPosition(0, 0);
+			for (i = 0; i < 64; i++)
+			{
+				Ssd1315_WriteData(0xFF);
+			}
+		}
 	}
-	#endif
 }
 
 void vTaskTempSensor(void *pvParameters)
