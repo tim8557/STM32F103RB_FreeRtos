@@ -4,8 +4,8 @@
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
 
-static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, uint8_t* res_buff);
-static uint8_t test_buffer[BSP_HTU21D_TEMP_BUFFER_SIZE] = {0};
+static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, Htu21d_Temp_Type* res, uint8_t cmd);
+
 
 void Htu21d_Init(void)
 {
@@ -33,15 +33,36 @@ void Htu21d_Init(void)
     I2C_Cmd(I2C1, ENABLE);
 }
 
-void Htu21d_Gettemperature(I2C_TypeDef* I2Cx, uint8_t* res_buff)
+void Htu21d_Gettemperature(I2C_TypeDef* I2Cx, Htu21d_Temp_Type* res)
 {
-    Htu21d_ReadRegisterValue(I2Cx, res_buff);
+    float cal_res;
+    int32_t data_shift;
+
+    Htu21d_ReadRegisterValue(I2Cx, res, BSP_HTU21D_TRIGGER_TEMP_MEASURE);
+    
+    data_shift = (res->res_buff[0] << 8) | (res->res_buff[1]);
+    cal_res = (data_shift * 175.72)/65536 - 46.85;
+
+    res->temp = cal_res;
 }
 
-static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, uint8_t* res_buff)
+void Htu21d_Gethumidity(I2C_TypeDef* I2Cx, Htu21d_Humidity_Type* res)
+{
+    uint32_t data_shift;
+    uint32_t cal_res;
+
+    Htu21d_ReadRegisterValue(I2Cx, res, BSP_HTU21D_TRIGGER_HUMIDITY_MEASURE);
+    
+    data_shift = (res->res_buff[0] << 8) | (res->res_buff[1]);
+    cal_res = (data_shift * 125)/65536 - 6;
+
+    res->humidity = cal_res;
+}
+
+
+static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, Htu21d_Temp_Type* res, uint8_t cmd)
 {
     uint8_t num_read;
-    uint8_t data_temp = 0;
 
     //genrate the start signal.
     I2C_GenerateSTART(I2Cx, ENABLE);
@@ -56,7 +77,7 @@ static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, uint8_t* res_buff)
     while (I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_TRANSMITTER_MODE_SELECTED) == ERROR);
     
     //temperature read commend
-    I2C_SendData(I2Cx, BSP_HTU21D_TRIGGER_TEMP_MEASURE);
+    I2C_SendData(I2Cx, cmd);
 
     //check if data is transmitted
     while (I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_TRANSMITTING) == ERROR);
@@ -73,15 +94,13 @@ static void Htu21d_ReadRegisterValue(I2C_TypeDef* I2Cx, uint8_t* res_buff)
     //check if devic address is recived
     while (I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_RECEIVER_MODE_SELECTED) == ERROR);
 
-    for (num_read = 0 ; num_read < BSP_HTU21D_TEMP_BUFFER_SIZE; num_read++) 
+    for (num_read = 0 ; num_read < BSP_HTU21D_BUFFER_SIZE; num_read++) 
     {
         //wait until the resule is received
         while (I2C_CheckEvent(I2Cx, I2C_EVENT_MASTER_BYTE_RECEIVED) == ERROR);
 
         //reed out data from the result buffer
-        data_temp = I2C_ReceiveData(I2Cx);
-        test_buffer[num_read] = data_temp;
-        *(res_buff + num_read) = data_temp;
+        res->res_buff[num_read] = I2C_ReceiveData(I2Cx);
     }
 
     I2C_AcknowledgeConfig(I2Cx, DISABLE);

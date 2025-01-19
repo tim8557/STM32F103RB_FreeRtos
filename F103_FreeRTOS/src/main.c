@@ -40,6 +40,7 @@ SOFTWARE.
 #include "stm32f10x_gpio.h"
 #include "stm32f10x.h"
 #include "Bsp_htu21d.h"
+#include "Bsp_oled.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -121,10 +122,12 @@ SOFTWARE.
 
 /* Private function prototypes */
 void vTaskTempSensor(void *pvParameters);
+void vTaskOledDisplay(void);
 static void prvSetupHardware(void);
 static void SplashLED(void);
 
-uint8_t TempResBuffer[BSP_HTU21D_TEMP_BUFFER_SIZE] = {0};
+Htu21d_Temp_Type TempResBuffer = {{0}};
+Htu21d_Humidity_Type HumiResbuffer = {{0}};
 
 
 /* Private functions */
@@ -138,16 +141,26 @@ uint8_t TempResBuffer[BSP_HTU21D_TEMP_BUFFER_SIZE] = {0};
 */
 int main(void)
 {
- prvSetupHardware();
-
+  prvSetupHardware();
+  vTaskOledDisplay();
   xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
-
   vTaskStartScheduler();
 
   while(1);
   return 0;
 }
 
+void vTaskOledDisplay(void)
+{
+	#if 1
+	uint8_t i;
+	Ssd1315_OledSetPosition(0, 0);
+	for (i = 0; i < 64; i++)
+	{
+		Ssd1315_WriteData(0xFF);
+	}
+	#endif
+}
 
 void vTaskTempSensor(void *pvParameters)
 {
@@ -161,7 +174,7 @@ void vTaskTempSensor(void *pvParameters)
 	{
 		if(xTaskCheckForTimeOut(&x_timeout, &openTimeout) == pdTRUE)
 		{
-			Htu21d_Gettemperature(I2C1, TempResBuffer);
+			Htu21d_Gethumidity(I2C1, &HumiResbuffer);
 			openTimeout = 1000; /*reload the  1000 ms*/
 		}
 	}
@@ -288,6 +301,8 @@ static void prvSetupHardware(void)
 	McalPort_GpioConfig();
 
 	Htu21d_Init();
+
+	Ssd1315_Init();
 }
 
 static void SplashLED(void)
