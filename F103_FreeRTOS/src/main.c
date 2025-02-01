@@ -41,6 +41,7 @@ SOFTWARE.
 #include "stm32f10x.h"
 #include "Bsp_htu21d.h"
 #include "Bsp_oled.h"
+#include "Bsp_rs232.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -122,7 +123,7 @@ SOFTWARE.
 
 /* Private function prototypes */
 void vTaskTempSensor(void *pvParameters);
-void vTaskOledDisplay(void);
+void vTaskOledDisplay(void* pvParameters);
 static void prvSetupHardware(void);
 static void SplashLED(void);
 
@@ -150,11 +151,10 @@ int main(void)
   return 0;
 }
 
-void vTaskOledDisplay(void)
+void vTaskOledDisplay(void* pvParameters)
 {
 	xTimeOutType x_timeout; 
 	portTickType openTimeout;
-	uint8_t init_result;
 	
 	vTaskSetTimeOutState(&x_timeout);
 	openTimeout = 5; /*ms*/
@@ -163,18 +163,8 @@ void vTaskOledDisplay(void)
 	{
 		if(xTaskCheckForTimeOut(&x_timeout, &openTimeout) == pdTRUE)
 		{
-			init_result = Ssd1315_InitCmd();
+			Ssd1315_InitCmd();
 			openTimeout = 5; /*reload the  1000 ms*/
-		}
-
-		if (init_result == 1)
-		{
-			uint8_t i;
-			Ssd1315_OledSetPosition(0, 0);
-			for (i = 0; i < 64; i++)
-			{
-				Ssd1315_WriteData(0xFF);
-			}
 		}
 	}
 }
@@ -320,6 +310,8 @@ static void prvSetupHardware(void)
 	Htu21d_Init();
 
 	Ssd1315_Init();
+
+	Rs232_Init();
 }
 
 static void SplashLED(void)
