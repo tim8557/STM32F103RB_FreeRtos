@@ -42,6 +42,8 @@ SOFTWARE.
 #include "Bsp_htu21d.h"
 #include "Bsp_oled.h"
 #include "Bsp_rs232.h"
+#include "Bsp_otm8009a.h"
+#include "Bsp_xpt2046.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -124,12 +126,15 @@ SOFTWARE.
 /* Private function prototypes */
 void vTaskTempSensor(void *pvParameters);
 void vTaskOledDisplay(void* pvParameters);
+void vTaskLcdDisplay(void* pvParameters);
+void vTaskTouchScreenDetect(void* pvParameters);
 static void prvSetupHardware(void);
-static void SplashLED(void);
 
 Htu21d_Temp_Type TempResBuffer = {{0}};
 Htu21d_Humidity_Type HumiResbuffer = {{0}};
 
+TaskHandle_t Lcddisplay;
+TaskHandle_t Touchscreen;
 
 /* Private functions */
 
@@ -143,12 +148,53 @@ Htu21d_Humidity_Type HumiResbuffer = {{0}};
 int main(void)
 {
   prvSetupHardware();
-  xTaskCreate(vTaskOledDisplay, "vTaskOledDisplay", STACK_SIZE, NULL, 0, NULL);
+  xTaskCreate(vTaskLcdDisplay, "vTaskLcdDisplay", STACK_SIZE, NULL, 0, &Lcddisplay);
   //xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
   vTaskStartScheduler();
 
   while(1);
   return 0;
+}
+
+void vTaskLcdDisplay(void* pvParameters)
+{	
+	while(1)
+	{
+		//Pin configuration
+		Otm8009a_PinInit();
+		vTaskDelay(100);
+		//Reset pin low
+		Otm8009a_Reset_Clr();
+		vTaskDelay(100);
+		//Reset pin high
+		Otm8009a_Reset_Set();
+		vTaskDelay(50);
+		//Initial command
+		Otm8009a_Init_Command();
+		vTaskDelay(100);
+		Otm8009a_Write_Command(0x2900);
+		vTaskDelay(50);
+		Otm8009a_Write_Command(0x2C00); 
+		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_BLACK);
+		Otm8009a_RainbowTest();
+		//touch screen init
+		Xpt2046_PinInit();
+		xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
+		vTaskDelete(Lcddisplay);
+	}
+}
+
+void vTaskTouchScreenDetect(void* pvParameters)
+{
+	while(1)
+	{
+		//vTaskSuspendAll();
+		Xpt2046_Runnable_1ms();
+		//xTaskResumeAll();
+		//vTaskDelay(1);
+		//vTaskSuspendAll();
+		//xTaskResumeAll();
+	}
 }
 
 void vTaskOledDisplay(void* pvParameters)
@@ -305,37 +351,13 @@ static void prvSetupHardware(void)
 
 	//SerialPortInit();
 
-	McalPort_GpioConfig();
+	//McalPort_GpioConfig();
 
-	Htu21d_Init();
+	//Htu21d_Init();
 
-	Ssd1315_Init();
+	//Ssd1315_Init();
 
-	Rs232_Init();
-}
-
-static void SplashLED(void)
-{
-	static uint32_t cnt = 0;
-	/* Splash LED */
-	if(cnt == 1000000)
-	{
-		cnt = 0;
-	}
-	else 
-	{
-		cnt++;
-	}
-
-	if(cnt == 500000)
-	{
-		McalPort_SplashLedHigh(GPIOB, GPIO_Pin_8);
-	}
-
-	if(cnt == 999999)
-	{
-		McalPort_SplashLedLow(GPIOB, GPIO_Pin_8);
-	}
+	//Rs232_Init();
 }
 
 

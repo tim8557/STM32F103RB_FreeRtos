@@ -28,7 +28,7 @@ void Ssd1315_Showstring(char* string, uint8_t page, uint8_t col);
 void Ssd1315_HorizontalScroll(uint8_t start_page, uint8_t end_page, uint8_t speed);
 void Ssd1315_Showchar(char chr);
 
-const unsigned char F6x8[][6] =		
+const unsigned char F6x8[92][6] =		
 {
 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,// sp
 0x00, 0x00, 0x00, 0x2f, 0x00, 0x00,// !
