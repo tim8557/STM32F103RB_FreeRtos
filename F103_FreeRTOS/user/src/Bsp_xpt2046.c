@@ -70,7 +70,7 @@ void Xpt2046_PinInit(void)
 
     //Panel input detection
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;  
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
     
     Spi_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_8;

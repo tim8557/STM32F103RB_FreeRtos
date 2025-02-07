@@ -16,7 +16,7 @@
 #define LCD_BRED        0XF81F
 #define LCD_GRED 	    0XFFE0
 #define LCD_GBLUE	    0X07FF
-#define LCD_RED         0xF800
+#define LCD_RED         0xF800 
 #define LCD_MAGENTA     0xF81F
 #define LCD_GREEN       0x07E0
 #define LCD_CYAN        0x7FFF
@@ -39,5 +39,6 @@ void Otm8009a_Set_Led(void);
 void Otm8009a_DrawPixel(uint16_t sx, uint16_t sy, uint16_t color);
 void Otm8009a_RainbowTest(void);
 void Otm8009a_FillBlock(uint16_t xstart, uint16_t xend, uint16_t ystart, uint16_t yend, uint16_t color);
+void Otm8009a_ShowString(char* string, uint16_t x,uint16_t y,uint16_t font_color, uint16_t back_color, uint8_t size);
 
 #endif

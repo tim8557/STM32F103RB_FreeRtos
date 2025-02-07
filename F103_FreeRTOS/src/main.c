@@ -177,6 +177,7 @@ void vTaskLcdDisplay(void* pvParameters)
 		Otm8009a_Write_Command(0x2C00); 
 		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_BLACK);
 		Otm8009a_RainbowTest();
+		Otm8009a_ShowString("Hello World", 50, 50, 0xFFF0, 4, 16);
 		//touch screen init
 		Xpt2046_PinInit();
 		xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
