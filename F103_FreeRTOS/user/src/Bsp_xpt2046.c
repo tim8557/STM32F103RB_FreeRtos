@@ -185,7 +185,7 @@ void Xpt2046_SpiRead_Xposition_Yposition(uint16_t* Xres, uint16_t* Yres)
 
         data_tmp = data_tmp << 8;
 
-        *Xres = Xpt2046_Spi_Send_Byte(XPT2046_DUMMY_CMD) | data_tmp;
+        *Xres = (Xpt2046_Spi_Send_Byte(XPT2046_DUMMY_CMD) >> 3) | data_tmp;
 
         //read y position
         (void)Xpt2046_Spi_Send_Byte(XPT2046_GET_YPOS_CMD);
@@ -194,7 +194,7 @@ void Xpt2046_SpiRead_Xposition_Yposition(uint16_t* Xres, uint16_t* Yres)
 
         data_tmp = data_tmp << 8;
 
-        *Yres = Xpt2046_Spi_Send_Byte(XPT2046_DUMMY_CMD) | data_tmp;
+        *Yres = (Xpt2046_Spi_Send_Byte(XPT2046_DUMMY_CMD) >> 3) | data_tmp;
     }
 
     Xpt2046_CS_High();

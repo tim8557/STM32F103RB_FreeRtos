@@ -118,7 +118,7 @@ SOFTWARE.
 
 
 /* Private macro */
-#define STACK_SIZE 500
+#define STACK_SIZE 100
 
 /* Private variables */
  //USART_InitTypeDef USART_InitStructure;
@@ -128,13 +128,16 @@ void vTaskTempSensor(void *pvParameters);
 void vTaskOledDisplay(void* pvParameters);
 void vTaskLcdDisplay(void* pvParameters);
 void vTaskTouchScreenDetect(void* pvParameters);
+void vTaskCounterDisplay(void* pvParameters);
 static void prvSetupHardware(void);
 
 Htu21d_Temp_Type TempResBuffer = {{0}};
 Htu21d_Humidity_Type HumiResbuffer = {{0}};
 
+uint32_t counter_second = 0;
 TaskHandle_t Lcddisplay;
 TaskHandle_t Touchscreen;
+TaskHandle_t Counterdisplay;
 
 /* Private functions */
 
@@ -177,10 +180,12 @@ void vTaskLcdDisplay(void* pvParameters)
 		Otm8009a_Write_Command(0x2C00); 
 		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_BLACK);
 		Otm8009a_RainbowTest();
-		Otm8009a_ShowString("Hello World", 50, 50, 0xFFF0, 4, 16);
+		Otm8009a_ShowString("Hello World", 50, 50, LCD_YELLOW, LCD_BLACK, 16);
 		//touch screen init
 		Xpt2046_PinInit();
 		xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
+		xTaskCreate(vTaskCounterDisplay, "vTaskCounterDisplay", STACK_SIZE, NULL, 0, &Counterdisplay);
+
 		vTaskDelete(Lcddisplay);
 	}
 }
@@ -189,12 +194,17 @@ void vTaskTouchScreenDetect(void* pvParameters)
 {
 	while(1)
 	{
-		//vTaskSuspendAll();
 		Xpt2046_Runnable_1ms();
-		//xTaskResumeAll();
-		//vTaskDelay(1);
-		//vTaskSuspendAll();
-		//xTaskResumeAll();
+	}
+}
+
+void vTaskCounterDisplay(void* pvParameters)
+{
+	while(1)
+	{
+		Otm8009a_ShowNum(counter_second, 5, 100, 100, LCD_YELLOW, LCD_BLACK, 16);
+		vTaskDelay(1000);
+		counter_second++;
 	}
 }
 

@@ -173,12 +173,8 @@ const unsigned char asc2_1206[95][12]={
 {0x02,0x25,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00} /*"~",94*/
 }; 
 
-//����ASCII��
-//ƫ����32
-//ASCII�ַ���
-//ƫ����32
-//��С:16*8
-//����ʽ�����򣨵�λ��ǰ��
+//ASCII
+//16*8
 const unsigned char asc2_1608[95][16]={
 {0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00},/*" ",0*/
 {0x00,0x00,0x00,0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x00,0x00,0x18,0x18,0x00,0x00},/*"!",1*/
@@ -859,5 +855,27 @@ void Otm8009a_ShowString(char* string, uint16_t x,uint16_t y,uint16_t font_color
         Otm8009a_ShowChar(string[pos], x + (pos*(size/2)), y, font_color, back_color, size);
         pos++;
     }
+}
+
+void Otm8009a_ShowNum(uint32_t target_num, uint8_t num_size, uint16_t x,uint16_t y,uint16_t font_color, uint16_t back_color, uint8_t size)
+{
+	uint8_t i = 0;
+	uint8_t pos = 0;
+	uint32_t multi = 1;
+	uint8_t multi_cnt = 0;
+	unsigned char digit = 0;
+
+	for (i = num_size; i > 0; i--)
+	{
+		for (multi_cnt = 0; multi_cnt < i -1; multi_cnt++)
+		{
+			multi = multi * 10;
+		}
+		digit = (target_num / multi) % 10;
+		Otm8009a_ShowChar(digit + 48, x + (pos*(size/2)), y, font_color, back_color, size);
+		pos++;
+		multi = 1;
+	}
+
 }
 
