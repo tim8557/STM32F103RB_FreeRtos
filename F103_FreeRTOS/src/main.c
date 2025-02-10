@@ -44,6 +44,7 @@ SOFTWARE.
 #include "Bsp_rs232.h"
 #include "Bsp_otm8009a.h"
 #include "Bsp_xpt2046.h"
+#include "Bsp_camera.h"
 
 #ifdef USE_STM3210B_EVAL
  #include "stm3210b_eval.h"
@@ -151,6 +152,7 @@ TaskHandle_t Counterdisplay;
 int main(void)
 {
   prvSetupHardware();
+  //Camera_Init();
   xTaskCreate(vTaskLcdDisplay, "vTaskLcdDisplay", STACK_SIZE, NULL, 0, &Lcddisplay);
   //xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
   vTaskStartScheduler();
@@ -171,7 +173,7 @@ void vTaskLcdDisplay(void* pvParameters)
 		vTaskDelay(100);
 		//Reset pin high
 		Otm8009a_Reset_Set();
-		vTaskDelay(50);
+		vTaskDelay(100);
 		//Initial command
 		Otm8009a_Init_Command();
 		vTaskDelay(100);
@@ -180,9 +182,10 @@ void vTaskLcdDisplay(void* pvParameters)
 		Otm8009a_Write_Command(0x2C00); 
 		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_BLACK);
 		Otm8009a_RainbowTest();
-		Otm8009a_ShowString("Hello World", 50, 50, LCD_YELLOW, LCD_BLACK, 16);
+		//Otm8009a_ShowString("Hello World", 50, 50, LCD_WHITE, LCD_BLACK, 16);
 		//touch screen init
 		Xpt2046_PinInit();
+		Camera_Init();
 		xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
 		xTaskCreate(vTaskCounterDisplay, "vTaskCounterDisplay", STACK_SIZE, NULL, 0, &Counterdisplay);
 
@@ -202,7 +205,7 @@ void vTaskCounterDisplay(void* pvParameters)
 {
 	while(1)
 	{
-		Otm8009a_ShowNum(counter_second, 5, 100, 100, LCD_YELLOW, LCD_BLACK, 16);
+		//Otm8009a_ShowNum(counter_second, 5, 100, 100, LCD_BLACK, LCD_WHITE, 16);
 		vTaskDelay(1000);
 		counter_second++;
 	}
@@ -353,7 +356,7 @@ static void prvSetupHardware(void)
 	/* Set the Vector Table base address at 0x08000000 */
 	NVIC_SetVectorTable( NVIC_VectTab_FLASH, 0x0 );
 
-	NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
+	//NVIC_PriorityGroupConfig( NVIC_PriorityGroup_4 );
 
 	/* Configure HCLK clock as SysTick clock source. */
 	SysTick_CLKSourceConfig( SysTick_CLKSource_HCLK );

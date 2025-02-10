@@ -72,7 +72,7 @@ uint16_t const rainbow_color[7] =
 	LCD_GREEN,
 	LCD_BLUE,
 	LCD_INDIGO,
-	LCD_PURPLE
+	LCD_WHITE
 };
 
 const unsigned char asc2_1206[95][12]={
@@ -283,7 +283,8 @@ void Otm8009a_PinInit(void)
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);	
-	GPIO_SetBits(GPIOC,GPIO_Pin_10|GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_6|GPIO_Pin_4);
+	GPIO_SetBits(GPIOC, GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_6|GPIO_Pin_4);
+	GPIO_ResetBits(GPIOC, GPIO_Pin_10);
 	
 	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;  
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
@@ -744,14 +745,15 @@ static void Otm8009a_WriteRAM_Prepare(void)
 
 void Otm8009a_Set_Direction_and_Clear(uint8_t direction, uint16_t color)
 {
+	Otm8009a_Set_Led();
     Otm8009a_direction(direction);
-    Otm8009a_Set_Led();
     Otm8009a_Clear(color);
 }
 
 void Otm8009a_Set_Led(void)
 {
-    LCD_LED=1;
+	GPIO_SetBits(GPIOC, GPIO_Pin_10);
+    //LCD_LED=1;
 }
 
 void Otm8009a_DrawPixel(uint16_t sx, uint16_t sy, uint16_t color)

@@ -10,7 +10,7 @@
 #define LCD_H 800
 
 //define the lcd color
-#define LCD_WHITE       0xFFFF
+#define LCD_WHITE       0xFFFE
 #define LCD_BLACK      	0x0000	  
 #define LCD_BLUE       	0x001F  
 #define LCD_BRED        0XF81F
