@@ -152,7 +152,6 @@ TaskHandle_t Counterdisplay;
 int main(void)
 {
   prvSetupHardware();
-  //Camera_Init();
   xTaskCreate(vTaskLcdDisplay, "vTaskLcdDisplay", STACK_SIZE, NULL, 0, &Lcddisplay);
   //xTaskCreate(vTaskTempSensor, "vTaskTempSensor", STACK_SIZE, NULL, 0, NULL);
   vTaskStartScheduler();
@@ -180,14 +179,12 @@ void vTaskLcdDisplay(void* pvParameters)
 		Otm8009a_Write_Command(0x2900);
 		vTaskDelay(50);
 		Otm8009a_Write_Command(0x2C00); 
-		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_BLACK);
+		Otm8009a_Set_Direction_and_Clear(USE_HORIZONTAL, LCD_WHITE);
 		Otm8009a_RainbowTest();
 		//Otm8009a_ShowString("Hello World", 50, 50, LCD_WHITE, LCD_BLACK, 16);
-		//touch screen init
-		Xpt2046_PinInit();
 		Camera_Init();
-		xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
-		xTaskCreate(vTaskCounterDisplay, "vTaskCounterDisplay", STACK_SIZE, NULL, 0, &Counterdisplay);
+		//xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
+		//xTaskCreate(vTaskCounterDisplay, "vTaskCounterDisplay", STACK_SIZE, NULL, 0, &Counterdisplay);
 
 		vTaskDelete(Lcddisplay);
 	}
@@ -206,8 +203,6 @@ void vTaskCounterDisplay(void* pvParameters)
 	while(1)
 	{
 		//Otm8009a_ShowNum(counter_second, 5, 100, 100, LCD_BLACK, LCD_WHITE, 16);
-		vTaskDelay(1000);
-		counter_second++;
 	}
 }
 

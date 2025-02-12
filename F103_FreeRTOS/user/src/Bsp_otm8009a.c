@@ -3,14 +3,17 @@
 #include "Bsp_otm8009a.h"
 
 #define OTM8009A_GPIO_TYPE         GPIOC
-#define OTM8009A_DATA_OUT(data)    GPIOB->ODR=data
+#define OTM8009A_DATA_OUT_PORTB(data)    GPIOB->ODR=((data)&0xFF3F)
+#define OTM8009A_DATA_OUT_PORTA(data)    GPIOA->ODR=((data)&0xC0)
+
+#define OTM8009A_PORTB_PIN         GPIO_Pin_0 | GPIO_Pin_1 | GPIO_Pin_2 | GPIO_Pin_3 | GPIO_Pin_4 | GPIO_Pin_5 | GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10 | GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_13 | GPIO_Pin_14 | GPIO_Pin_15
 
 //OTM8009A control pin define
-#define OTM8009A_CS   9       //chip select pin           PC9
-#define OTM8009A_RS   8       //reset pin                 PC8 
-#define OTM8009A_RST  4       //                          PC4
-#define OTM8009A_WR   7       //data write pin            PC7
-#define OTM8009A_RD   6       //data read pin             PC6
+#define OTM8009A_CS   9       //chip select pin            PC9
+#define OTM8009A_RS   8       //reset pin                  PC8 
+#define OTM8009A_RST  11       //                          PC11
+#define OTM8009A_WR   12       //data write pin            PC12
+#define OTM8009A_RD   14       //data read pin             PC13
 #define OTM8009A_LED  10
 
 
@@ -279,16 +282,20 @@ void Otm8009a_PinInit(void)
     GPIO_InitTypeDef  GPIO_InitStructure;
 	GPIO_PinRemapConfig(GPIO_Remap_SWJ_JTAGDisable , ENABLE);
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_10| GPIO_Pin_7| GPIO_Pin_8| GPIO_Pin_9 | GPIO_Pin_6 | GPIO_Pin_4; //GPIOC10,6,7,8,9,4
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_8 | GPIO_Pin_9 | GPIO_Pin_10| GPIO_Pin_11 | GPIO_Pin_12 | GPIO_Pin_14; //GPIOC10,6,7,8,9,4
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);	
-	GPIO_SetBits(GPIOC, GPIO_Pin_7|GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_6|GPIO_Pin_4);
-	GPIO_ResetBits(GPIOC, GPIO_Pin_10);
+
+	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6 | GPIO_Pin_7;
+	GPIO_Init(GPIOA, &GPIO_InitStructure);
 	
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_All;  
+	GPIO_InitStructure.GPIO_Pin = OTM8009A_PORTB_PIN;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);
-	GPIO_SetBits(GPIOB,GPIO_Pin_All);
+	GPIO_SetBits(GPIOA,GPIO_Pin_6 | GPIO_Pin_7); 
+	GPIO_SetBits(GPIOB,OTM8009A_PORTB_PIN);
+	GPIO_SetBits(GPIOC, GPIO_Pin_8|GPIO_Pin_9|GPIO_Pin_11|GPIO_Pin_12|GPIO_Pin_14);
+	GPIO_ResetBits(GPIOC, GPIO_Pin_10);
 }
 
 void Otm8009a_Init_Command(void)
@@ -658,7 +665,8 @@ void Otm8009a_Write_Command(uint16_t value)
 static void Otm8009a_Write(uint16_t value)
 {
     OTM8009A_CS_CLR;  
-	OTM8009A_DATA_OUT(value);
+	OTM8009A_DATA_OUT_PORTB(value);
+	OTM8009A_DATA_OUT_PORTA(value);
 	OTM8009A_WR_CLR; 
 	OTM8009A_WR_SET; 
 	OTM8009A_CS_SET;
