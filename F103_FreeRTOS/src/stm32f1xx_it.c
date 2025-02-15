@@ -147,12 +147,7 @@ void SysTick_Handler(void)
 }
 */
 
-void EXTI15_10_IRQHandler(void)
-{
-  while(1)
-  {
-  }
-}
+
 /******************************************************************************/
 /*                 STM32F1xx Peripherals Interrupt Handlers                   */
 /*  Add here the Interrupt Handler for the used peripheral(s) (PPP), for the  */

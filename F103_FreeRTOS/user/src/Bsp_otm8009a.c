@@ -54,13 +54,11 @@ typedef struct lcd_dev
 }lcd_dev_type;
 
 //function define
-static void Otm8009a_Write_Data(uint16_t value);
 static void Otm8009a_Write(uint16_t value);
 static void Otm8009a_direction(uint8_t direction);
 static void Otm8009a_Clear(uint16_t Color);
 static void Otm8009a_WriteReg(uint16_t LCD_Reg, uint16_t LCD_RegValue);
 static void Otm8009a_WriteRAM_Prepare(void);
-static void Otm8009a_SetWindows(uint16_t xStar, uint16_t yStar,uint16_t xEnd,uint16_t yEnd);
 static void Otm8009a_SetPixelPosition(uint16_t sx, uint16_t sy);
 
 //variable
@@ -639,7 +637,7 @@ void Otm8009a_Init_Command(void)
 }
 
 
-static void Otm8009a_Write_Data(uint16_t value)
+void Otm8009a_Write_Data(uint16_t value)
 {
     OTM8009A_RS_SET;
     #if OTM8009A_RGB_8BIT
@@ -726,7 +724,7 @@ static void Otm8009a_Clear(uint16_t Color)
 	}
 } 
 
-static void Otm8009a_SetWindows(uint16_t xStar, uint16_t yStar,uint16_t xEnd,uint16_t yEnd)
+void Otm8009a_SetWindows(uint16_t xStar, uint16_t yStar,uint16_t xEnd,uint16_t yEnd)
 {	
 	Otm8009a_Write_Command(lcddev.setxcmd);Otm8009a_Write_Data(xStar>>8);  
 	Otm8009a_Write_Command(lcddev.setxcmd+1);Otm8009a_Write_Data(xStar&0XFF);	  

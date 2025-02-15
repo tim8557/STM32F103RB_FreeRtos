@@ -41,5 +41,6 @@ void Otm8009a_RainbowTest(void);
 void Otm8009a_FillBlock(uint16_t xstart, uint16_t xend, uint16_t ystart, uint16_t yend, uint16_t color);
 void Otm8009a_ShowString(char* string, uint16_t x,uint16_t y,uint16_t font_color, uint16_t back_color, uint8_t size);
 void Otm8009a_ShowNum(uint32_t target_num, uint8_t num_size, uint16_t x,uint16_t y,uint16_t font_color, uint16_t back_color, uint8_t size);
-
+void Otm8009a_SetWindows(uint16_t xStar, uint16_t yStar,uint16_t xEnd,uint16_t yEnd);
+void Otm8009a_Write_Data(uint16_t value);
 #endif

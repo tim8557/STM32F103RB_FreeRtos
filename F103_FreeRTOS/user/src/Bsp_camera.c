@@ -5,6 +5,9 @@
 #include "stm32f10x_rcc.h"
 #include "stm32f10x_i2c.h"
 #include "stm32f10x_tim.h"
+#include "stm32f1xx_it.h"
+#include "Bsp_camera.h"
+#include "Bsp_otm8009a.h"
 
 #define OV7670_DEVICE_ADDRESS_WRITE   0x42
 #define OV7670_DEVICE_ADDRESS_READ    0x43
@@ -20,37 +23,85 @@
 #define CAMERA_REG_DM_LNL       0x92
 #define CAMERA_REG_DM_LNH       0x93
 #define CAMERA_REG_COM11        0x3B
+#define CAMERA_REG_HSTART       0x17
+#define CAMERA_REG_VSTART       0x19
 
 //OV7670 command value
 #define CAMERA_COM7_VALUE       0x5  /* RGB selection */
 #define CAMERA_COM15_VALUE      0xD0 /* RGB565 */
-#define CAMERA_CLKRC_VALUE      0x00
+#define CAMERA_CLKRC_VALUE      0x80
 #define CAMERA_DBLV_VALUE       0xA
 #define CAMERA_EXHCH_VALUE      0x00
 #define CAMERA_EXHCL_VALUE      0x00
-#define CAMERA_DM_LNL_VALUE     0x00
+#define CAMERA_DM_LNL_VALUE     0x66
 #define CAMERA_DM_LNH_VALUE     0x00
 #define CAMERA_COM11_VALUE      0xA
+#define CAMERA_HSTART_VALUE     0x39
+#define CAMERA_VSTART_VALUE     0x5D
 
-//Pin name define PA1 PA2 PA3
+//Pin name define PA2 PA3
 #define CAMERA_RESTE_PIN        GPIO_Pin_2
 #define CAMERA_PWDN_PIN         GPIO_Pin_3
-#define CAMERA_PCLK_PIN         GPIO_Pin_4
-#define CAMERA_HREF_PIN         GPIO_Pin_4
+
+//FIFO used pin
+#define CAMERA_RCLK_PIN         GPIO_Pin_4
+#define CAMERA_FIFO_WR_RST      GPIO_Pin_5
+#define CAMERA_FIFO_WR_EN       GPIO_Pin_10
+#define CAMERA_FIFO_RE_RST      GPIO_Pin_9
+#define CAMERA_FIFO_OE          GPIO_Pin_8
+
+//FIFO PIN high low
+#define CAMERA_RCLK_H()           GPIOA->BSRR=CAMERA_RCLK_PIN
+#define CAMERA_RCLK_L()           GPIOA->BRR =CAMERA_RCLK_PIN
+
+#define CAMERA_FIFO_WR_RST_H()    GPIOA->BSRR=CAMERA_FIFO_WR_RST
+#define CAMERA_FIFO_WR_RST_L()    GPIOA->BRR =CAMERA_FIFO_WR_RST
+
+#define CAMERA_FIFO_WR_EN_H()     GPIOA->BSRR=CAMERA_FIFO_WR_EN
+#define CAMERA_FIFO_WR_EN_L()     GPIOA->BRR =CAMERA_FIFO_WR_EN
+
+#define CAMERA_FIFO_RE_RST_H()    GPIOA->BSRR=CAMERA_FIFO_RE_RST
+#define CAMERA_FIFO_RE_RST_L()    GPIOA->BRR =CAMERA_FIFO_RE_RST
+
+#define CAMERA_FIFO_OE_H()        GPIOA->BSRR=CAMERA_FIFO_OE
+#define CAMERA_FIFO_OE_L()        GPIOA->BRR =CAMERA_FIFO_OE
+
+#define CAMERA_FIFO_RD_PREPARE  do{\
+                                CAMERA_FIFO_RE_RST_L();\
+                                CAMERA_RCLK_L();\
+                                CAMERA_RCLK_H();\
+                                CAMERA_FIFO_RE_RST_H();\
+                                CAMERA_RCLK_L();\
+                                CAMERA_RCLK_H();\
+                                }while(0)
+
+#define CAMERA_RGB565_READ(val)     do{\
+                                    val=0;\
+                                    CAMERA_RCLK_L();\
+                                    val = (GPIOC->IDR) & 0xff;\
+                                    CAMERA_RCLK_H();\
+                                    CAMERA_RCLK_L();\
+                                    val = (val << 8) | ((GPIOC->IDR) & 0xff);\
+                                    CAMERA_RCLK_H();\
+                                    }while(0)
+
 
 static void Camera_PinInit(void);
 static void Camera_ExternelInt_Init(void);
 static void NVIC_Configuration(void);
 static void Camera_Send_Command(I2C_TypeDef* I2Cx, uint8_t register_addr, uint8_t cmd);
-static void Camera_Pwm_SetDuty(uint16_t duty);
-static void Camera_Pwm_Configuration(uint16_t Prescaler, uint16_t Period);
 static void Camera_Sccb_Init(void);
 static uint8_t Camera_Read_Byte(I2C_TypeDef* I2Cx, uint8_t register_addr);
+static void Camera_InitCommand(void);
+static void Camera_Image_Display(uint16_t xstart, uint16_t ystart, uint16_t xend, uint16_t yend);
 
 static uint8_t Device_id = 0;
+static Camera_Status_Type Camera_Status = 0;
 
 static const uint8_t Camera_Register_and_Value_List[][2] =
 {
+    {CAMERA_REG_HSTART, CAMERA_HSTART_VALUE},
+    {CAMERA_REG_VSTART, CAMERA_VSTART_VALUE},
     {CAMERA_REG_COM15, CAMERA_COM15_VALUE},
     {CAMERA_REG_CLKRC, CAMERA_CLKRC_VALUE},
     {CAMERA_REG_DBLV, CAMERA_DBLV_VALUE},
@@ -61,16 +112,21 @@ static const uint8_t Camera_Register_and_Value_List[][2] =
     {CAMERA_REG_COM11, CAMERA_COM11_VALUE}
 };
 
+void Camera_Runnable_20ms(void)
+{
+    Camera_Status_Type status = 0;
+
+    if (status == camera_fifo_ready)
+    {
+        CAMERA_FIFO_RD_PREPARE;
+        Camera_Image_Display(0, 0, 240, 320);
+    }
+}
+
 void Camera_Init(void)
 {
     //camera used gpio init
     Camera_PinInit();
-
-    //set 24mhz output clock
-    Camera_Pwm_Configuration(0, 2);
-
-    //set duty cycle of 24mhz output clock
-    Camera_Pwm_SetDuty(1);
 
     //SCCB init
     Camera_Sccb_Init();
@@ -91,8 +147,6 @@ static void Camera_PinInit(void)
 {
     RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO, ENABLE);
     RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_TIM2, ENABLE);
-    RCC_APB1PeriphClockCmd(RCC_APB1Periph_I2C1, ENABLE);
 
     //GPIO init
     GPIO_InitTypeDef  GPIO_InitStructure;
@@ -102,15 +156,9 @@ static void Camera_PinInit(void)
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);
 
-    //port C VGA input
+    //port C RGB565 input
     GPIO_InitStructure.GPIO_Pin = CAMERA_PORTC_PIN;
     GPIO_Init(GPIOC, &GPIO_InitStructure);
-
-    //24mhz clock output
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
-	GPIO_Init(GPIOA, &GPIO_InitStructure);
 
     //SCCB communication
     GPIO_InitStructure.GPIO_Pin = GPIO_Pin_6;
@@ -122,27 +170,25 @@ static void Camera_PinInit(void)
     GPIO_Init(GPIOB, &GPIO_InitStructure);
 
     //RESTE pin output
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2|GPIO_Pin_3;
+    //FIFO pin output
+    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2|GPIO_Pin_3|CAMERA_RCLK_PIN|CAMERA_FIFO_WR_RST|CAMERA_FIFO_WR_EN|CAMERA_FIFO_RE_RST;
     GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
     GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
     GPIO_Init(GPIOA, &GPIO_InitStructure);
 
-    //HREF and PCLK input
-    GPIO_InitStructure.GPIO_Pin = GPIO_Pin_4|GPIO_Pin_5;
-    GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPD;
-    GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-    GPIO_Init(GPIOA, &GPIO_InitStructure);
+    CAMERA_FIFO_OE_L();
+    CAMERA_FIFO_WR_EN_H();
 }
 
 static void Camera_ExternelInt_Init(void)
 {
     EXTI_InitTypeDef EXTI_InitStructure;
 
+    //PC13 the VSYNC interrupt pin
     GPIO_EXTILineConfig(GPIO_PortSourceGPIOC, GPIO_PinSource13);
     
     //EXIT init
     EXTI_InitStructure.EXTI_Line = EXTI_Line13;
-
     /* EXTI为中断模式 */
     EXTI_InitStructure.EXTI_Mode = EXTI_Mode_Interrupt;
     /* 上升沿中断 */
@@ -150,7 +196,7 @@ static void Camera_ExternelInt_Init(void)
     /* 使能中断 */
     EXTI_InitStructure.EXTI_LineCmd = ENABLE;
     EXTI_Init(&EXTI_InitStructure);
-
+ 
     NVIC_Configuration();
 }
 
@@ -159,7 +205,7 @@ void Camera_Read_Device_ID(void)
     Device_id = Camera_Read_Byte(I2C1, 0xb);
 }
 
-void Camera_InitCommand(void)
+static void Camera_InitCommand(void)
 { 
     uint8_t pos = 0;
 
@@ -218,37 +264,6 @@ static void Camera_Send_Command(I2C_TypeDef* I2Cx, uint8_t register_addr, uint8_
     I2C_GenerateSTOP(I2Cx, ENABLE);
 
     I2C_AcknowledgeConfig(I2Cx, ENABLE);
-}
-
-static void Camera_Pwm_Configuration(uint16_t Prescaler, uint16_t Period)
-{
-    //TIM Init
-    TIM_TimeBaseInitTypeDef  TIM_TimeBaseStructure;
-    TIM_TimeBaseStructure.TIM_ClockDivision = 0;
-    TIM_TimeBaseStructure.TIM_CounterMode = TIM_CounterMode_Up;
-    TIM_TimeBaseStructure.TIM_Period = Period;
-    TIM_TimeBaseStructure.TIM_Prescaler = Prescaler;
-    TIM_TimeBaseStructure.TIM_RepetitionCounter = 0;
-    TIM_TimeBaseInit(TIM2, &TIM_TimeBaseStructure);
-
-    //TIM OC configuration
-    TIM_OCInitTypeDef  TIM_OCInitStructure;
-    TIM_OCInitStructure.TIM_OCIdleState = TIM_OCIdleState_Set;
-    TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
-    //TIM_OCInitStructure.TIM_OCNIdleState = TIM_OCNIdleState_Reset;
-    //TIM_OCInitStructure.TIM_OCNPolarity = TIM_OCNPolarity_High;
-    TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
-    //TIM_OCInitStructure.TIM_OutputNState = TIM_OutputNState_Disable;
-    TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
-    TIM_OCInitStructure.TIM_Pulse = 0;
-    TIM_OC2Init(TIM2, &TIM_OCInitStructure);
-    //TIM_OC2PreloadConfig(TIM2, TIM_OCPreload_Enable);
-    TIM_Cmd(TIM2, ENABLE);
-}
-
-static void Camera_Pwm_SetDuty(uint16_t duty)
-{
-    TIM_SetCompare2(TIM2, duty);
 }
 
 static void Camera_Sccb_Init(void)
@@ -316,4 +331,58 @@ static uint8_t Camera_Read_Byte(I2C_TypeDef* I2Cx, uint8_t register_addr)
     I2C_AcknowledgeConfig(I2Cx, ENABLE);
 
     return result;
+}
+
+void EXTI15_10_IRQHandler(void)
+{
+    Camera_Status_Type status = 0;
+    status = Camera_GetStatus();
+
+    if (status == camera_fifo_not_ready)
+    {
+        CAMERA_FIFO_WR_RST_L();     //拉低使FIFO写(数据from摄像头)指针复位
+        CAMERA_FIFO_WR_EN_H();      //拉高使FIFO写允许
+        Camera_SetStatus(camera_fifo_prepare);
+        CAMERA_FIFO_WR_EN_H();      //使FIFO写允许
+        CAMERA_FIFO_WR_RST_H();     //允许使FIFO写(数据from摄像头)指针运动
+        
+    }
+    else if (status == camera_fifo_prepare)
+    {
+        CAMERA_FIFO_WR_EN_L();      //拉低使FIFO写暂停
+        Camera_SetStatus(camera_fifo_ready);
+    }
+
+    EXTI_ClearITPendingBit(EXTI_Line13);
+}
+
+Camera_Status_Type Camera_GetStatus(void)
+{
+    return Camera_Status;
+}
+
+void Camera_SetStatus(Camera_Status_Type status)
+{
+    Camera_Status = status;
+}
+
+static void Camera_Image_Display(uint16_t xstart, uint16_t ystart, uint16_t xend, uint16_t yend)
+{
+    uint16_t rgb565_val = 0;
+    uint16_t xlength = xend - xstart;
+	uint16_t ylength = yend - ystart;
+	
+	uint16_t xpos = 0;
+	uint16_t ypos = 0;
+	
+	Otm8009a_SetWindows(xstart, ystart, xend, yend);
+
+	for (xpos = 0; xpos < xlength; xpos++)
+	{
+		for (ypos = 0; ypos < ylength; ypos++)
+		{
+            CAMERA_RGB565_READ(rgb565_val);
+			Otm8009a_Write_Data(rgb565_val);
+		}
+	}
 }

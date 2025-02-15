@@ -128,7 +128,7 @@ SOFTWARE.
 void vTaskTempSensor(void *pvParameters);
 void vTaskOledDisplay(void* pvParameters);
 void vTaskLcdDisplay(void* pvParameters);
-void vTaskTouchScreenDetect(void* pvParameters);
+void vTaskCameraDetect(void* pvParameters);
 void vTaskCounterDisplay(void* pvParameters);
 static void prvSetupHardware(void);
 
@@ -137,7 +137,7 @@ Htu21d_Humidity_Type HumiResbuffer = {{0}};
 
 uint32_t counter_second = 0;
 TaskHandle_t Lcddisplay;
-TaskHandle_t Touchscreen;
+TaskHandle_t Camera_read;
 TaskHandle_t Counterdisplay;
 
 /* Private functions */
@@ -183,18 +183,28 @@ void vTaskLcdDisplay(void* pvParameters)
 		Otm8009a_RainbowTest();
 		//Otm8009a_ShowString("Hello World", 50, 50, LCD_WHITE, LCD_BLACK, 16);
 		Camera_Init();
-		//xTaskCreate(vTaskTouchScreenDetect, "vTaskTouchScreenDetect", STACK_SIZE, NULL, 0, &Touchscreen);
+		xTaskCreate(vTaskCameraDetect, "vTaskCameraDetect", STACK_SIZE, NULL, 0, &Camera_read);
 		//xTaskCreate(vTaskCounterDisplay, "vTaskCounterDisplay", STACK_SIZE, NULL, 0, &Counterdisplay);
 
 		vTaskDelete(Lcddisplay);
 	}
 }
 
-void vTaskTouchScreenDetect(void* pvParameters)
+void vTaskCameraDetect(void* pvParameters)
 {
+	xTimeOutType x_timeout; 
+	portTickType openTimeout;
+	
+	vTaskSetTimeOutState(&x_timeout);
+	openTimeout = 20; /*ms*/
+ 
 	while(1)
 	{
-		Xpt2046_Runnable_1ms();
+		if(xTaskCheckForTimeOut(&x_timeout, &openTimeout) == pdTRUE)
+		{
+			Camera_Runnable_20ms();
+			openTimeout = 20; /*reload the  20 ms*/
+		}
 	}
 }
 
@@ -359,8 +369,6 @@ static void prvSetupHardware(void)
 	//vParTestInitialise();
 
 	//SerialPortInit();
-
-	//McalPort_GpioConfig();
 
 	//Htu21d_Init();
 
